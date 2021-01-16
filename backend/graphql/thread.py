@@ -46,6 +46,27 @@ class CreateThread(relay.ClientIDMutation):
         thread = models.Thread.objects.create(title=title, content=content, author=author, subgroup_id=subgroup_pk)
         return CreateThread(thread=thread)
 
+class CreateReply(relay.ClientIDMutation):
+    class Input:
+        content = graphene.String(required=True)
+        thread = graphene.ID(required=True)
+
+    reply = graphene.Field(ThreadNode)
+
+    @classmethod
+    def mutate_and_get_payload(self, root, info, content, thread):
+        thread_pk = from_global_id(thread)[1]
+        try:
+            subgroup = models.Thread.objects.get(pk=thread_pk)
+        except models.Thread.DoesNotExist:
+            raise GraphQLError('The Thread does not exist.')
+        if info.context.user.is_authenticated:
+            author = info.context.user
+        else:
+            raise GraphQLError('Please login.')
+        thread = models.Reply.objects.create(content=content, author=author, thread_id=thread_pk)
+        return CreateReply(thread=thread)
+
 class Query(ObjectType):
     thread = relay.Node.Field(ThreadNode)
     threads = DjangoFilterConnectionField(ThreadNode)
