@@ -20,10 +20,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'tke)t=_=%q8a#6$weo1rm!3y%3=b(t8rh$fax%jw4)iyhl2b5m'
+SECRET_KEY = '<change this>'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = []
 
@@ -37,6 +37,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'backend',
+    'graphene_django',
+    'graphql_auth',
+    'graphql_jwt.refresh_token.apps.RefreshTokenConfig',
 ]
 
 MIDDLEWARE = [
@@ -47,6 +51,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
 ]
 
 ROOT_URLCONF = 'borz.urls'
@@ -73,12 +78,7 @@ WSGI_APPLICATION = 'borz.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+DATABASES = {}
 
 
 # Password validation
@@ -118,3 +118,55 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+
+# Authentication
+
+AUTH_USER_MODEL = 'backend.User'
+
+AUTHENTICATION_BACKENDS = [
+    'graphql_auth.backends.GraphQLAuthBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+
+ALLOW_LOGIN_NOT_VERIFIED = False
+
+
+# Email
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' 
+
+
+# GraphQL
+
+GRAPHENE = {
+    'SCHEMA': 'backend.graphql.schema',
+    'MIDDLEWARE': [
+        'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    ],
+}
+
+GRAPHQL_JWT = {
+    'JWT_ALLOW_ANY_CLASSES': [
+        'graphql_auth.relay.Register',
+        'graphql_auth.relay.VerifyAccount',
+        'graphql_auth.relay.ResendActivationEmail',
+        'graphql_auth.relay.SendPasswordResetEmail',
+        'graphql_auth.relay.PasswordReset',
+        'graphql_auth.relay.ObtainJSONWebToken',
+        'graphql_auth.relay.VerifyToken',
+        'graphql_auth.relay.RefreshToken',
+        'graphql_auth.relay.RevokeToken',
+        'graphql_auth.relay.VerifySecondaryEmail',
+    ],
+    'JWT_VERIFY_EXPIRATION': True,
+    'JWT_LONG_RUNNING_REFRESH_TOKEN': True,
+}
+
+
+# config.py
+
+try:
+    from .config import *
+except ImportError:
+    pass
