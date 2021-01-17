@@ -59,7 +59,7 @@ ROOT_URLCONF = 'borz.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': ['templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -143,6 +143,7 @@ GRAPHENE = {
     'SCHEMA': 'backend.graphql.schema',
     'MIDDLEWARE': [
         'graphql_jwt.middleware.JSONWebTokenMiddleware',
+        # 'backend.middlewares.UnixTimestampMiddleware',
     ],
 }
 

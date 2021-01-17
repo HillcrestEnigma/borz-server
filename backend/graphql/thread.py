@@ -18,6 +18,13 @@ class ThreadNode(DjangoObjectType):
         filter_fields = ['title', 'content', 'created', 'modified', 'author', 'subgroup']
         interfaces = (relay.Node, )
 
+    # @classmethod
+    # def get_queryset(cls, queryset, info):
+    #     if info.context.user.is_anonymous:
+    #         return queryset.empty()
+    #     else:
+    #         return queryset.filter(subgroup=info.context.user.subgroups)
+
 class ReplyNode(DjangoObjectType):
     class Meta:
         model = models.Reply
@@ -36,7 +43,7 @@ class CreateThread(relay.ClientIDMutation):
     def mutate_and_get_payload(self, root, info, title, content, subgroup):
         subgroup_pk = from_global_id(subgroup)[1]
         try:
-            subgroup = models.Subgroup.objects.get(pk=subgroup_pk)
+            models.Subgroup.objects.get(pk=subgroup_pk)
         except models.Subgroup.DoesNotExist:
             raise GraphQLError('The Subgroup does not exist.')
         if info.context.user.is_authenticated:
@@ -46,12 +53,36 @@ class CreateThread(relay.ClientIDMutation):
         thread = models.Thread.objects.create(title=title, content=content, author=author, subgroup_id=subgroup_pk)
         return CreateThread(thread=thread)
 
+class UpdateThread(relay.ClientIDMutation):
+    class Input:
+        title = graphene.String(required=True)
+        content = graphene.String(required=True)
+        thread = graphene.ID(required=True)
+
+    thread = graphene.Field(ThreadNode)
+
+    @classmethod
+    def mutate_and_get_payload(self, root, info, title, content, thread):
+        thread_pk = from_global_id(thread)[1]
+        try:
+            thread_obj = models.Thread.objects.get(pk=thread_pk)
+        except models.Thread.DoesNotExist:
+            raise GraphQLError('The Thread does not exist.')
+        if not info.context.user.is_authenticated:
+            raise GraphQLError('Please login.')
+        elif info.context.user != thread_obj.author:
+            raise GraphQLError('You are not the author of this thread.')
+        thread_obj.title = title
+        thread_obj.content = content
+        thread_obj.save()
+        return UpdateThread(thread=thread_obj)
+
 class CreateReply(relay.ClientIDMutation):
     class Input:
         content = graphene.String(required=True)
         thread = graphene.ID(required=True)
 
-    reply = graphene.Field(ThreadNode)
+    reply = graphene.Field(ReplyNode)
 
     @classmethod
     def mutate_and_get_payload(self, root, info, content, thread):
@@ -59,13 +90,35 @@ class CreateReply(relay.ClientIDMutation):
         try:
             subgroup = models.Thread.objects.get(pk=thread_pk)
         except models.Thread.DoesNotExist:
-            raise GraphQLError('The Thread does not exist.')
+            raise GraphQLError('The thread does not exist.')
         if info.context.user.is_authenticated:
             author = info.context.user
         else:
             raise GraphQLError('Please login.')
-        thread = models.Reply.objects.create(content=content, author=author, thread_id=thread_pk)
-        return CreateReply(thread=thread)
+        reply = models.Reply.objects.create(content=content, author=author, thread_id=thread_pk)
+        return CreateReply(reply=reply)
+
+class UpdateReply(relay.ClientIDMutation):
+    class Input:
+        content = graphene.String(required=True)
+        reply = graphene.ID(required=True)
+
+    reply = graphene.Field(ReplyNode)
+
+    @classmethod
+    def mutate_and_get_payload(self, root, info, title, content, reply):
+        reply_pk = from_global_id(reply)[1]
+        try:
+            reply_obj = models.Reply.objects.get(pk=reply_pk)
+        except models.Reply.DoesNotExist:
+            raise GraphQLError('The reply does not exist.')
+        if not info.context.user.is_authenticated:
+            raise GraphQLError('Please login.')
+        elif info.context.user != reply_obj.author:
+            raise GraphQLError('You are not the author of this thread.')
+        reply_obj.content = content
+        reply_obj.save()
+        return UpdateReply(thread=reply_obj)
 
 class Query(ObjectType):
     thread = relay.Node.Field(ThreadNode)
@@ -76,3 +129,6 @@ class Query(ObjectType):
 
 class Mutation(ObjectType):
     create_thread = CreateThread.Field()
+    update_thread = UpdateThread.Field()
+    create_reply = CreateReply.Field()
+    update_reply = UpdateReply.Field()
