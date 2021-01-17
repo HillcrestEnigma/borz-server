@@ -10,3 +10,6 @@ class Subgroup(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     parent = models.ForeignKey('self', on_delete=models.SET_NULL, related_name='child_group', null=True, blank=True)
     members = models.ManyToManyField(User, related_name='subgroups', blank=True)
+
+    def __str__(self):
+        return self.name
